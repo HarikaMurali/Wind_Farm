@@ -237,28 +237,6 @@ The included `data/wind_turbine_data.csv` contains:
 
 ---
 
-## 🔮 Future Enhancements
-
-### Phase 2 (Q1 2026)
-- [ ] Integration with real-time SCADA APIs
-- [ ] Multi-turbine comparison dashboard
-- [ ] SMS/Email alerts for critical failures
-- [ ] Mobile app for field technicians
-
-### Phase 3 (Q2 2026)
-- [ ] Deep learning models (LSTM for time-series)
-- [ ] Anomaly detection using autoencoders
-- [ ] Predictive maintenance scheduling optimizer
-- [ ] Integration with work order management systems
-
-### Phase 4 (Q3 2026)
-- [ ] IoT sensor integration
-- [ ] Edge computing for real-time predictions
-- [ ] Multi-site fleet management
-- [ ] Advanced reporting and BI dashboards
-
----
-
 ## 🤝 Contributing
 
 We welcome contributions! To contribute:
