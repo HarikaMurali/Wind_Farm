@@ -73,6 +73,11 @@ wind_direction = st.sidebar.slider(
     step=1.0
 )
 
+# Auto-refresh toggle
+st.sidebar.divider()
+if st.sidebar.button("🔄 Refresh Map Data", help="Update map with current sensor readings"):
+    st.rerun()
+
 # ========== Real-time Prediction ==========
 input_instance = [[wind_speed, theoretical_power, wind_direction]]
 pred = model.predict(input_instance)[0]
@@ -176,38 +181,170 @@ st.plotly_chart(fig_trends, use_container_width=True)
 
 st.divider()
 
-# ========== Interactive Wind Farm Map ==========
-st.markdown("### 🗺️ Wind Farm Geographic Distribution")
+# ========== Enhanced Interactive Wind Farm Map ==========
+st.markdown("### 🗺️ Wind Farm Geographic Distribution & Real-Time Monitoring")
 
-# Sample turbine locations (replace with real coordinates if available)
-turbine_locations = pd.DataFrame({
-    'Turbine': ['T1', 'T2', 'T3', 'T4', 'T5'],
-    'Latitude': [28.6139, 28.6200, 28.6050, 28.6250, 28.6100],
-    'Longitude': [77.2090, 77.2150, 77.2000, 77.2200, 77.2050],
-    'Risk (%)': [risk*100, risk*90, risk*110, risk*75, risk*95],
-    'Status': ['Active', 'Active', 'Maintenance', 'Active', 'Active']
-})
+# Create two columns for controls
+map_col1, map_col2 = st.columns([3, 1])
 
-# Clip risk values
-turbine_locations['Risk (%)'] = turbine_locations['Risk (%)'].clip(0, 100)
+with map_col2:
+    st.markdown("#### Map Controls")
+    map_style = st.selectbox(
+        "Map Style",
+        ["open-street-map", "carto-positron", "carto-darkmatter", "stamen-terrain"],
+        index=0
+    )
+    
+    show_labels = st.checkbox("Show Turbine Labels", value=True)
+    show_connections = st.checkbox("Show Grid Connections", value=False)
 
-# Create interactive map
-fig_map = px.scatter_mapbox(
-    turbine_locations,
-    lat='Latitude',
-    lon='Longitude',
-    size='Risk (%)',
-    color='Risk (%)',
-    color_continuous_scale=['green', 'orange', 'red'],
-    hover_name='Turbine',
-    hover_data={'Latitude': False, 'Longitude': False, 'Risk (%)': True, 'Status': True},
-    size_max=20,
-    zoom=11,
-    mapbox_style='open-street-map',
-    title='Turbine Risk Distribution Map'
+with map_col1:
+    # Enhanced turbine locations with more details
+    turbine_locations = pd.DataFrame({
+        'Turbine': ['T1', 'T2', 'T3', 'T4', 'T5'],
+        'Latitude': [28.6139, 28.6200, 28.6050, 28.6250, 28.6100],
+        'Longitude': [77.2090, 77.2150, 77.2000, 77.2200, 77.2050],
+        'Risk (%)': [risk*100, risk*90, risk*110, risk*75, risk*95],
+        'Status': ['Active', 'Active', 'Maintenance', 'Active', 'Active'],
+        'Power (kW)': [np.random.randint(400, 900) for _ in range(5)],
+        'Last Maintenance': ['2 days ago', '5 days ago', 'Today', '10 days ago', '3 days ago'],
+        'Capacity': ['1.5 MW', '1.5 MW', '2.0 MW', '1.5 MW', '2.0 MW']
+    })
+    
+    # Clip risk values
+    turbine_locations['Risk (%)'] = turbine_locations['Risk (%)'].clip(0, 100)
+    
+    # Add risk category
+    def categorize_risk(r):
+        if r > 70: return 'Critical'
+        elif r > 40: return 'Warning'
+        else: return 'Normal'
+    
+    turbine_locations['Risk Level'] = turbine_locations['Risk (%)'].apply(categorize_risk)
+    
+    # Create custom hover text
+    turbine_locations['hover_text'] = turbine_locations.apply(
+        lambda row: f"<b>{row['Turbine']}</b><br>" +
+                   f"Status: {row['Status']}<br>" +
+                   f"Risk: {row['Risk (%)']:.1f}%<br>" +
+                   f"Power: {row['Power (kW)']} kW<br>" +
+                   f"Capacity: {row['Capacity']}<br>" +
+                   f"Last Service: {row['Last Maintenance']}",
+        axis=1
+    )
+    
+    # Create the map figure
+    fig_map = go.Figure()
+    
+    # Add turbine markers with custom styling (FIXED: removed 'line' property)
+    for risk_level in ['Normal', 'Warning', 'Critical']:
+        df_level = turbine_locations[turbine_locations['Risk Level'] == risk_level]
+        
+        color_map = {
+            'Normal': '#2ecc40',
+            'Warning': '#ff851b', 
+            'Critical': '#ff4136'
+        }
+        
+        fig_map.add_trace(go.Scattermapbox(
+            lat=df_level['Latitude'],
+            lon=df_level['Longitude'],
+            mode='markers+text' if show_labels else 'markers',
+            marker=dict(
+                size=df_level['Risk (%)'] / 3,
+                color=color_map[risk_level],
+                opacity=0.8,
+                symbol='circle'
+                # REMOVED: line=dict(width=2, color='white') - not supported by Scattermapbox
+            ),
+            text=df_level['Turbine'] if show_labels else None,
+            textposition='top center',
+            textfont=dict(size=12, color='white', family='Arial Black'),
+            hovertext=df_level['hover_text'],
+            hoverinfo='text',
+            name=f'{risk_level} Risk',
+            showlegend=True
+        ))
+    
+    # Add grid connections if enabled
+    if show_connections:
+        # Draw lines connecting turbines to central substation
+        substation_lat, substation_lon = 28.6150, 77.2100
+        
+        for idx, row in turbine_locations.iterrows():
+            fig_map.add_trace(go.Scattermapbox(
+                lat=[row['Latitude'], substation_lat],
+                lon=[row['Longitude'], substation_lon],
+                mode='lines',
+                line=dict(width=1, color='cyan'),
+                opacity=0.4,
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+        
+        # Add substation marker
+        fig_map.add_trace(go.Scattermapbox(
+            lat=[substation_lat],
+            lon=[substation_lon],
+            mode='markers+text',
+            marker=dict(size=20, color='blue', symbol='square'),
+            text=['Substation'],
+            textposition='bottom center',
+            name='Substation',
+            hovertext='<b>Main Substation</b><br>Grid Connection Point',
+            hoverinfo='text'
+        ))
+    
+    # Update map layout
+    fig_map.update_layout(
+        mapbox=dict(
+            style=map_style,
+            center=dict(lat=28.6150, lon=77.2100),
+            zoom=11.5,
+            pitch=0,
+            bearing=0
+        ),
+        height=500,
+        margin=dict(l=0, r=0, t=30, b=0),
+        title=dict(
+            text='Turbine Risk Distribution Map',
+            font=dict(size=16)
+        ),
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor='rgba(0,0,0,0.5)',
+            font=dict(color='white')
+        ),
+        hovermode='closest'
+    )
+    
+    st.plotly_chart(fig_map, use_container_width=True)
+
+# Map legend and statistics
+st.markdown("#### Fleet Summary")
+summary_cols = st.columns(4)
+summary_cols[0].metric(
+    "Total Turbines", 
+    len(turbine_locations),
+    help="Active turbines in the farm"
 )
-fig_map.update_layout(height=400)
-st.plotly_chart(fig_map, use_container_width=True)
+summary_cols[1].metric(
+    "Critical Risk", 
+    len(turbine_locations[turbine_locations['Risk Level'] == 'Critical']),
+    delta="-1" if len(turbine_locations[turbine_locations['Risk Level'] == 'Critical']) < 2 else "+1",
+    delta_color="inverse"
+)
+summary_cols[2].metric(
+    "Avg Power Output", 
+    f"{turbine_locations['Power (kW)'].mean():.0f} kW"
+)
+summary_cols[3].metric(
+    "Fleet Availability", 
+    f"{(len(turbine_locations[turbine_locations['Status'] == 'Active']) / len(turbine_locations) * 100):.0f}%"
+)
 
 st.divider()
 
@@ -420,12 +557,12 @@ st.divider()
 st.markdown("### 🔥 Turbine Component Risk Heatmap")
 
 components = ['Gearbox', 'Generator', 'Rotor', 'Blades', 'Control System']
-turbines = ['T1', 'T2', 'T3', 'T4', 'T5']
-risk_matrix = np.random.randint(10, 100, size=(len(components), len(turbines)))
+turbines_heat = ['T1', 'T2', 'T3', 'T4', 'T5']
+risk_matrix = np.random.randint(10, 100, size=(len(components), len(turbines_heat)))
 
 fig_heatmap = go.Figure(data=go.Heatmap(
     z=risk_matrix,
-    x=turbines,
+    x=turbines_heat,
     y=components,
     colorscale='RdYlGn_r',
     text=risk_matrix,
