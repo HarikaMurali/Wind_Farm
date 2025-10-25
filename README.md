@@ -303,7 +303,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 - scikit-learn team for robust ML tools
 - Cypher Hackathon organizers for the opportunity
 
----
+-----
 
 ## 📞 Support
 
