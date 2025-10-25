@@ -7,7 +7,7 @@ import numpy as np
 # ========== Load All Datasets ==========
 
 # 1. GE Turbine Power Curve.csv (Main dataset with all features)
-ge_data = pd.read_csv('T1.csv')
+ge_data = pd.read_csv('data/wind_turbine_data.csv')
 print(f"GE Data shape: {ge_data.shape}")
 
 # 2. Turbine_Data.csv (Has many features but mostly empty in your sample)
