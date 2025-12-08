@@ -2,7 +2,6 @@
 
 An AI-powered predictive maintenance system for wind turbines that uses machine learning to detect potential failures before they occur, reducing downtime and optimizing renewable energy generation.
 
-**Built by Team TECH_TONIC for Cypher Hackathon 2025**
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-FF4B4B.svg)
